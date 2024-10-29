@@ -1,1 +1,102 @@
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+
+public class LayeredPermutationMixingHash {
+
+    private static final int BLOCK_SIZE = 64; // Block size in bytes (512 bits)
+    private static final int HASH_SIZE = 32;  // Output hash size in bytes (256 bits)
+
+    // Initial seed values (these could be randomized or configured)
+    private static final int[] SEED = {0x243F6A88, 0x85A308D3, 0x13198A2E, 0x03707344};
+
+    public static byte[] hash(byte[] input) {
+        // Padding the input data to match block size
+        byte[] paddedInput = padInput(input);
+        
+        // Initialize hash value
+        byte[] hash = new byte[HASH_SIZE];
+        System.arraycopy(paddedInput, 0, hash, 0, Math.min(paddedInput.length, HASH_SIZE));
+
+        // Processing each block through layers
+        for (int i = 0; i < paddedInput.length; i += BLOCK_SIZE) {
+            byte[] block = Arrays.copyOfRange(paddedInput, i, i + BLOCK_SIZE);
+            processBlock(block, hash);
+        }
+
+        return compress(hash);
+    }
+
+    // Padding input to ensure it's a multiple of BLOCK_SIZE
+    private static byte[] padInput(byte[] input) {
+        int paddedLength = ((input.length + BLOCK_SIZE - 1) / BLOCK_SIZE) * BLOCK_SIZE;
+        byte[] padded = new byte[paddedLength];
+        System.arraycopy(input, 0, padded, 0, input.length);
+        return padded;
+    }
+
+    // Process each block with permutation and mixing functions
+    private static void processBlock(byte[] block, byte[] hash) {
+        // Layer 1: Chaotic Permutation
+        chaoticPermutation(block);
+
+        // Layer 2: Nonlinear Mixing
+        nonlinearMixing(block);
+
+        // Cross-block diffusion: XOR block data with current hash state
+        for (int i = 0; i < hash.length; i++) {
+            hash[i] ^= block[i % block.length];
+        }
+    }
+
+    // Chaotic permutation of bytes within the block
+    private static void chaoticPermutation(byte[] block) {
+        for (int i = 0; i < block.length; i++) {
+            int j = (i + SEED[i % SEED.length]) % block.length;
+            byte temp = block[i];
+            block[i] = block[j];
+            block[j] = temp;
+        }
+    }
+
+    // Nonlinear mixing using XOR and bit rotation
+    private static void nonlinearMixing(byte[] block) {
+        for (int i = 0; i < block.length; i++) {
+            block[i] ^= SEED[i % SEED.length];
+            block[i] = rotateLeft(block[i], i % 8);
+        }
+    }
+
+    // Rotate bits of a byte to the left
+    private static byte rotateLeft(byte value, int shift) {
+        return (byte) ((value << shift) | ((value & 0xFF) >>> (8 - shift)));
+    }
+
+    // Final compression to get a fixed hash size output
+    private static byte[] compress(byte[] hash) {
+        byte[] finalHash = new byte[HASH_SIZE];
+        for (int i = 0; i < hash.length; i++) {
+            finalHash[i % HASH_SIZE] ^= hash[i];
+        }
+        return finalHash;
+    }
+
+    // Testing the LPMH hash function
+    public static void main(String[] args) {
+        String input = "Hello, this is a test for Layered Permutation and Mixing Hash!";
+        byte[] inputBytes = input.getBytes(StandardCharsets.UTF_8);
+
+        byte[] hashOutput = LayeredPermutationMixingHash.hash(inputBytes);
+
+        System.out.println("Hash output: " + bytesToHex(hashOutput));
+    }
+
+    // Utility to convert byte array to hexadecimal string
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : bytes) {
+            hexString.append(String.format("%02x", b));
+        }
+        return hexString.toString();
+    }
+}
 
