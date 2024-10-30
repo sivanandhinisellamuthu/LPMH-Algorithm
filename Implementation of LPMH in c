@@ -1,0 +1,61 @@
+#include <stdio.h>
+#include <stdint.h>
+
+// Define the initial prime constants and rotation values for mixing
+#define PRIME1 0x85ebca6b
+#define PRIME2 0xc2b2ae35
+#define ROT1 13
+#define ROT2 15
+
+// Utility function to rotate bits to the left
+uint32_t rotate_left(uint32_t value, int shift) {
+    return (value << shift) | (value >> (32 - shift));
+}
+
+// Function to perform the main hashing using layered permutation and mixing
+uint32_t LPMH_hash(uint32_t *data, size_t length) {
+    uint32_t hash = 0;
+
+    for (size_t i = 0; i < length; i++) {
+        uint32_t value = data[i];
+        
+        // Step 1: Permutation - Layer 1
+        value ^= (value << ROT1) ^ (value >> ROT2);
+        
+        // Step 2: Mixing - Layer 2
+        value *= PRIME1;
+        value ^= rotate_left(value, ROT1);
+
+        // Step 3: Layered Permutation - Layer 3
+        value *= PRIME2;
+        value ^= rotate_left(value, ROT2);
+        
+        // Combine into hash
+        hash ^= value;
+        hash = rotate_left(hash, ROT1) * PRIME1;
+    }
+
+    // Final mixing
+    hash ^= hash >> 16;
+    hash *= PRIME2;
+    hash ^= hash >> 13;
+    hash *= PRIME1;
+    hash ^= hash >> 16;
+
+    return hash;
+}
+
+int main() {
+    // Example input data (could be any integer array for hashing)
+    uint32_t data[] = {123, 456, 789, 101112};
+    size_t length = sizeof(data) / sizeof(data[0]);
+    
+    // Get the hash
+    uint32_t hash_value = LPMH_hash(data, length);
+    
+    // Output the result
+    printf("Hash value: %u\n", hash_value);
+    
+    return 0;
+}
+
